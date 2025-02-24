@@ -62,6 +62,4 @@ Beagochi è un gioco web di gamification in cui puoi selezionare fino a 5 attivi
    The level number will display a medal (bronze, silver, or gold) depending on the current cycle.
 5. Your progress is saved automatically in your browser, so even if you close the page, your XP and level remain cumulative for subsequent days.
 
----
 
-This README explains how Beagochi works, how it saves your progress, and how you can continue to level up your creature each day.
