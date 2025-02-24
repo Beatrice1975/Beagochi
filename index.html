@@ -1,24 +1,271 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo Quest</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beagochi</title>
+  <!-- Font simpatico da Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Luckiest Guy', cursive, sans-serif;
+    }
+    body {
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .stats {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #555;
+    }
+    .stats img {
+      width: 100px;
+      margin-top: 10px;
+    }
+    /* Elenco attività selezionate (da completare) */
+    #selectedTaskList {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 20px;
+    }
+    #selectedTaskList li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f9f9f9;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 5px;
+    }
+    #selectedTaskList li button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #selectedTaskList li button:hover {
+      background: #45a049;
+    }
+    /* Elenco attività disponibili in due colonne, scritte in piccolo */
+    #availableTasks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      font-size: 0.8em;
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+    }
+    #availableTasks div {
+      cursor: pointer;
+      margin: 3px 0;
+      padding: 3px;
+      border-radius: 3px;
+      text-align: center;
+      background: #eee;
+    }
+    #availableTasks div:hover {
+      background: #ddd;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Todo Quest</h1>
-        <div class="stats">
-            <p id="xp">XP: 0</p>
-            <p id="level">Livello: 1</p>
-        </div>
-        <ul id="taskList"></ul>
-        <div class="input-section">
-            <input type="text" id="taskInput" placeholder="Inserisci un'attività">
-            <button onclick="addTask()">Aggiungi</button>
-        </div>
+  <div class="container">
+    <h1>Beagochi</h1>
+    <div class="stats">
+      <p id="xp">XP: 0</p>
+      <p id="level">Livello: 1</p>
+      <img id="characterImage" alt="Personaggio">
     </div>
-    <script src="script.js"></script>
+    <!-- Elenco attività selezionate -->
+    <ul id="selectedTaskList"></ul>
+    <!-- Elenco attività disponibili -->
+    <div id="availableTasks"></div>
+  </div>
+
+  <script>
+    // Variabili di gioco
+    let xp = 0;
+    let level = 1;
+    let selectedTasks = [];
+    const maxSelectedTasks = 5;
+
+    // Elementi DOM
+    const xpElement = document.getElementById('xp');
+    const levelElement = document.getElementById('level');
+    const characterImage = document.getElementById('characterImage');
+    const selectedTaskList = document.getElementById('selectedTaskList');
+    const availableTasksDiv = document.getElementById('availableTasks');
+
+    // Attività disponibili (ordinate alfabeticamente)
+    const availableTasks = [
+      "Attività fisica", "Bere acqua", "Camminare", "Correre", "Creare",
+      "Digiunare", "Disegnare", "Giardinaggio", "Lavorare", "Mangiare sano",
+      "Meditare", "Progettare", "Riordinare", "Riposare", "Scrivere",
+      "Socializzare", "Studiare", "Tai-chi", "Uscire", "Viaggiare"
+    ];
+
+    // Sequenza delle animazioni (base cycle)
+    const baseCycleStages = [
+      "Egg_closed", "Egg_cracking", "Creature_moving", "Creature_baby", "Creature_toddler",
+      "Creature_adult", "Creature_adultc", "2Egg2", "2Eggmoves2", "2Creaturenewborn",
+      "2Creaturemoving2", "2Creaturegrow", "2Creatureadult2", "2Creatureadult2c",
+      "3Egg", "3Eggmoves", "3Creature_baby", "3Creature_babymov", "3Creature_childmov",
+      "3Creature_teenmov", "3Creature_teenmovc"
+    ];
+    // Soglie in XP per il base cycle
+    const thresholds = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900];
+
+    // Ogni ciclo copre 1900 XP (0-1899: ciclo base, 1900-3799: ciclo 1, ecc.)
+    const cycleXPRange = 1900;
+    const maxCycle = 3; // 1: bronzo, 2: argento, 3: oro
+
+    // Funzione per determinare la medaglia (se il ciclo corrente è > 0)
+    function getMedalHTML() {
+      let cycleIndex = Math.floor(xp / cycleXPRange);
+      if (cycleIndex > maxCycle) cycleIndex = maxCycle;
+      switch(cycleIndex) {
+        case 0: return "";
+        case 1: return " <span style='color: #cd7f32; font-size: 3em;'>&#9679;</span>"; // Bronze
+        case 2: return " <span style='color: silver; font-size: 3em;'>&#9679;</span>";       // Silver
+        case 3: return " <span style='color: gold; font-size: 3em;'>&#9679;</span>";         // Gold
+        default: return "";
+      }
+    }
+
+    // Aggiorna XP, livello e medaglia
+    function updateStats() {
+      xpElement.textContent = `XP: ${xp}`;
+      levelElement.innerHTML = `Livello: ${level}${getMedalHTML()}`;
+      updateCharacter();
+      saveProgress();
+    }
+
+    // Aggiorna l'immagine in base a XP
+    function updateCharacter() {
+      // Calcola il ciclo corrente (cappato al maxCycle)
+      let cycleIndex = Math.floor(xp / cycleXPRange);
+      if (cycleIndex > maxCycle) cycleIndex = maxCycle;
+      // XP relativo all'interno del ciclo corrente
+      let relativeXP = xp - (cycleIndex * cycleXPRange);
+      // Determina l'indice dello stadio corrente in base alle soglie
+      let stageIndex = 0;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (relativeXP < thresholds[i]) {
+          stageIndex = i;
+          break;
+        }
+        stageIndex = i + 1;
+      }
+      // Se l'indice supera la lunghezza della sequenza, lo fissi all'ultimo stadio
+      if (stageIndex >= baseCycleStages.length) stageIndex = baseCycleStages.length - 1;
+      let stage = baseCycleStages[stageIndex];
+      characterImage.src = `https://raw.githubusercontent.com/Beatrice1975/todo-quest/refs/heads/main/images/${stage}.gif`;
+      characterImage.alt = `Personaggio: ${stage}`;
+    }
+
+    // Visualizza l'elenco delle attività selezionate con il pulsante "Completato"
+    function renderSelectedTasks() {
+      selectedTaskList.innerHTML = '';
+      selectedTasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.textContent = task;
+        const completeBtn = document.createElement('button');
+        completeBtn.textContent = "Completato";
+        completeBtn.onclick = () => completeTask(index);
+        li.appendChild(completeBtn);
+        selectedTaskList.appendChild(li);
+      });
+      saveProgress();
+    }
+
+    // Quando si preme "Completato": l'attività viene rimossa e si aggiungono 10 XP
+    function completeTask(index) {
+      selectedTasks.splice(index, 1);
+      xp += 10;
+      if (xp >= level * 100) {
+        level++;
+      }
+      updateStats();
+      renderSelectedTasks();
+    }
+
+    // Aggiunge un'attività selezionata, se non supera il massimo consentito
+    function addTask(task) {
+      if (selectedTasks.length < maxSelectedTasks) {
+        if (!selectedTasks.includes(task)) {
+          selectedTasks.push(task);
+          renderSelectedTasks();
+        }
+      } else {
+        alert("Puoi selezionare solo 5 attività al giorno!");
+      }
+    }
+
+    // Visualizza l'elenco delle attività disponibili in due colonne
+    function renderAvailableTasks() {
+      availableTasksDiv.innerHTML = '';
+      availableTasks.forEach(task => {
+        const taskDiv = document.createElement('div');
+        taskDiv.textContent = task;
+        taskDiv.onclick = () => addTask(task);
+        availableTasksDiv.appendChild(taskDiv);
+      });
+    }
+
+    // Salvataggio del progresso giornaliero in localStorage
+    function saveProgress() {
+      const today = new Date().toLocaleDateString();
+      const progress = { xp, level, selectedTasks, date: today };
+      localStorage.setItem("beagochiProgress", JSON.stringify(progress));
+    }
+
+    // Caricamento del progresso: XP e livello sono cumulativi, mentre le attività vengono resettate se la data non corrisponde a oggi
+    function loadProgress() {
+      const saved = localStorage.getItem("beagochiProgress");
+      const today = new Date().toLocaleDateString();
+      if (saved) {
+        const progress = JSON.parse(saved);
+        xp = progress.xp;
+        level = progress.level;
+        if (progress.date === today) {
+          selectedTasks = progress.selectedTasks || [];
+        } else {
+          // Nuovo giorno: mantieni XP e livello, ma resetta le attività
+          selectedTasks = [];
+          progress.date = today;
+          progress.selectedTasks = [];
+          localStorage.setItem("beagochiProgress", JSON.stringify(progress));
+        }
+      }
+    }
+
+    // Inizializzazione
+    loadProgress();
+    updateStats();
+    renderSelectedTasks();
+    renderAvailableTasks();
+  </script>
 </body>
 </html>
